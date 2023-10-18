@@ -1,109 +1,97 @@
-#include "main.h"
-int (*get_builtin(char *command))(char **args, char **front);
-int shellby_exit(char **args, char **front);
-int shellby_cd(char **args, char __attribute__((__unused__)) **front);
-int shellby_help(char **args, char __attribute__((__unused__)) **front);
+#include "shell.h"
 
 /**
- * get_builtin - Matches a command with a corresponding
- *               shellby builtin function.
- * @command: The command to match.
- *
- * Return: A function pointer to the corresponding builtin.
+ * _myexit - exits the shell
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ *  Return: exits with a given exit status
+ *         (0) if info.argv[0] != "exit"
  */
-int (*get_builtin(char *command))(char **args, char **front)
+int _myexit(info_t *info)
 {
-	builtin_t funcs[] = {
-		{ "exit", shellby_exit },
-		{ "env", shellby_env },
-		{ "setenv", shellby_setenv },
-		{ "unsetenv", shellby_unsetenv },
-		{ "cd", shellby_cd },
-		{ "alias", shellby_alias },
-		{ "help", shellby_help },
-		{ NULL, NULL }
-	};
-	int i;
+	int exitcheck;
 
-	for (i = 0; funcs[i].name; i++)
+	if (info->argv[1])  /* If there is an exit arguement */
 	{
-		if (_strcmp(funcs[i].name, command) == 0)
-			break;
+		exitcheck = _erratoi(info->argv[1]);
+		if (exitcheck == -1)
+		{
+			info->status = 2;
+			print_error(info, "Illegal number: ");
+			_eputs(info->argv[1]);
+			_eputchar('\n');
+			return (1);
+		}
+		info->err_num = _erratoi(info->argv[1]);
+		return (-2);
 	}
-	return (funcs[i].f);
+	info->err_num = -1;
+	return (-2);
 }
 
 /**
- * shellby_exit - Causes normal process termination
- *                for the shellby shell.
- * @args: An array of arguments containing the exit value.
- * @front: A double pointer to the beginning of args.
- *
- * Return: If there are no arguments - -3.
- *         If the given exit value is invalid - 2.
- *         O/w - exits with the given status value.
- *
- * Description: Upon returning -3, the program exits back in the main function.
+ * _mycd - changes the current directory of the process
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ *  Return: Always 0
  */
-int shellby_exit(char **args, char **front)
+int _mycd(info_t *info)
 {
-	int i, len_of_int = 10;
-	unsigned int num = 0, max = 1 << (sizeof(int) * 8 - 1);
+	char *s, *dir, buffer[1024];
+	int chdir_ret;
 
-	if (args[0])
+	s = getcwd(buffer, 1024);
+	if (!s)
+		_puts("TODO: >>getcwd failure emsg here<<\n");
+	if (!info->argv[1])
 	{
-		if (args[0][0] == '+')
+		dir = _getenv(info, "HOME=");
+		if (!dir)
+			chdir_ret = /* TODO: what should this be? */
+				chdir((dir = _getenv(info, "PWD=")) ? dir : "/");
+		else
+			chdir_ret = chdir(dir);
+	}
+	else if (_strcmp(info->argv[1], "-") == 0)
+	{
+		if (!_getenv(info, "OLDPWD="))
 		{
-			i = 1;
-			len_of_int++;
+			_puts(s);
+			_putchar('\n');
+			return (1);
 		}
-		for (; args[0][i]; i++)
-		{
-			if (i <= len_of_int && args[0][i] >= '0' && args[0][i] <= '9')
-				num = (num * 10) + (args[0][i] - '0');
-			else
-				return (create_error(--args, 2));
-		}
+		_puts(_getenv(info, "OLDPWD=")), _putchar('\n');
+		chdir_ret = /* TODO: what should this be? */
+			chdir((dir = _getenv(info, "OLDPWD=")) ? dir : "/");
+	}
+	else
+		chdir_ret = chdir(info->argv[1]);
+	if (chdir_ret == -1)
+	{
+		print_error(info, "can't cd to ");
+		_eputs(info->argv[1]), _eputchar('\n');
 	}
 	else
 	{
-		return (-3);
+		_setenv(info, "OLDPWD", _getenv(info, "PWD="));
+		_setenv(info, "PWD", getcwd(buffer, 1024));
 	}
-	if (num > max - 1)
-		return (create_error(--args, 2));
-	args -= 1;
-	free_args(args, front);
-	free_env();
-	free_alias_list(aliases);
-	exit(num);
+	return (0);
 }
 
 /**
- * shellby_cd - Changes the current directory of the shellby process.
- * @args: An array of arguments.
- * @front: A double pointer to the beginning of args.
- *
- * Return: If the given string is not a directory - 2.
- *         If an error occurs - -1.
- *         Otherwise - 0.
+ * _myhelp - changes the current directory of the process
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ *  Return: Always 0
  */
-int shellby_cd(char **args, char __attribute__((__unused__)) **front)
+int _myhelp(info_t *info)
 {
-	char **dir_info, *new_line = "\n";
-	char *oldpwd = NULL, *pwd = NULL;
-	struct stat dir;
+	char **arg_array;
 
-	oldpwd = getcwd(oldpwd, 0);
-	if (!oldpwd)
-		return (-1);
-
-	if (args[0])
-	{
-		if (*(args[0]) == '-' || _strcmp(args[0], "--") == 0)
-		{
-			if ((args[0][1] == '-' && args[0][2] == '\0') ||
-					args[0][1] == '\0')
-			{
-				if (_getenv("OLDPWD") != NULL)
-					(chdir(*_getenv("OLDPWD") + 7));
-
+	arg_array = info->argv;
+	_puts("help call works. Function not yet implemented \n");
+	if (0)
+		_puts(*arg_array); /* temp att_unused workaround */
+	return (0);
+}
